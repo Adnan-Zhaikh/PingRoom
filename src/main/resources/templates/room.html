@@ -1,0 +1,40 @@
+<script>
+let stompClient, roomId, myName;
+
+function connect() {
+  const socket = new SockJS('/chat');
+  stompClient = Stomp.over(socket);
+  stompClient.debug = null; // stop console spam
+
+  stompClient.connect({}, () => {
+    const base = '/topic/room/' + roomId;
+
+    stompClient.subscribe(base + '/chat', msg => showMessage(JSON.parse(msg.body)));
+    stompClient.subscribe(base + '/presence', msg => renderMembers(JSON.parse(msg.body).members));
+    stompClient.subscribe(base + '/timer', msg => renderTimer(JSON.parse(msg.body)));
+
+    stompClient.send('/app/room/' + roomId + '/join', {}, JSON.stringify({ name: myName }));
+  });
+}
+
+function renderTimer(t) {
+  clearInterval(window.timerTick);
+  const el = document.getElementById('timer');
+  if (!t.running) { el.textContent = 'Idle'; return; }
+
+  const tick = () => {
+    const left = Math.max(0, Math.round((new Date(t.endsAt) - Date.now()) / 1000));
+    const m = String(Math.floor(left / 60)).padStart(2, '0');
+    const s = String(left % 60).padStart(2, '0');
+    el.textContent = `${t.phase} ${m}:${s}`;
+  };
+  tick();
+  window.timerTick = setInterval(tick, 1000);
+}
+
+window.onload = () => {
+  roomId = document.body.dataset.room;
+  myName = prompt('Your name?') || 'anon';
+  connect();
+};
+</script>
