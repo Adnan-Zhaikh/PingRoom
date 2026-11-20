@@ -8,11 +8,12 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 
 @Configuration
 @EnableWebSocketMessageBroker
-public class webSocketConfig implements WebSocketMessageBrokerConfigurer {
+public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
+
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/chat")
-                .setAllowedOriginPatterns("https://pingroom-9n22.onrender.com")
+                .setAllowedOriginPatterns("https://pingroom-9n22.onrender.com", "http://localhost:*")
                 .withSockJS();
     }
 
