@@ -1,0 +1,8 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><title>Something went wrong</title></head>
+<body>
+  <h1 th:text="${status} + ' — ' + ${error}">Error</h1>
+  <p>That page isn't here. <a href="/chat">Back to chat</a></p>
+</body>
+</html>
