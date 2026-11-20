@@ -22,6 +22,8 @@ import java.util.Map;
 @Controller
 public class ChatController {
 
+    public record PresenceUpdate(List<String> members) {}
+
     private final SimpMessagingTemplate broker;
     private final PresenceService presence;
     private final PomodoroService pomodoro;
@@ -38,7 +40,7 @@ public class ChatController {
         String sessionId = headers.getSessionId();
         String name = body.getOrDefault("name", "anon");
         List<String> members = presence.join(roomId, sessionId, name);
-        broker.convertAndSend("/topic/room/" + roomId + "/presence", Map.of("members", members));
+        broker.convertAndSend("/topic/room/" + roomId + "/presence", new PresenceUpdate(members));
         broker.convertAndSend("/topic/room/" + roomId + "/timer", pomodoro.get(roomId));
     }
 
@@ -65,7 +67,7 @@ public class ChatController {
         String roomId = presence.leave(event.getSessionId());
         if (roomId != null) {
             broker.convertAndSend("/topic/room/" + roomId + "/presence",
-                    Map.of("members", presence.members(roomId)));
+                    new PresenceUpdate(presence.members(roomId)));
         }
     }
 
