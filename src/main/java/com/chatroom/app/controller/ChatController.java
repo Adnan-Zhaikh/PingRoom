@@ -44,12 +44,33 @@ public class ChatController {
         broker.convertAndSend("/topic/room/" + roomId + "/timer", pomodoro.get(roomId));
     }
 
+    private final Map<String, Map<String, ChatMessage>> roomMessages = new ConcurrentHashMap<>();
+
     @MessageMapping("/room/{roomId}/chat")
-    public void chat(@DestinationVariable String roomId, @Payload ChatMessage message) {
-        message.setRoomId(roomId);
-        message.setSentAt(Instant.now().toString());
-        broker.convertAndSend("/topic/room/" + roomId + "/chat", message);
+    public void chat(@DestinationVariable String roomId, ChatMessage message) {
+        message.setId(UUID.randomUUID().toString());
+        message.setStarred(false);
+        roomMessages
+            .computeIfAbsent(roomId, k -> new ConcurrentHashMap<>())
+            .put(message.getId(), message);
+
+        messagingTemplate.convertAndSend("/topic/room/" + roomId + "/chat", message);
     }
+
+    @MessageMapping("/room/{roomId}/star/{messageId}")
+    public void star(@DestinationVariable String roomId,
+                    @DestinationVariable String messageId,
+                    @Payload Map<String, Boolean> payload) {
+        Map<String, ChatMessage> msgs = roomMessages.get(roomId);
+        if (msgs == null) return;
+
+        ChatMessage msg = msgs.get(messageId);
+        if (msg == null) return;
+
+        msg.setStarred(Boolean.TRUE.equals(payload.get("starred")));
+        messagingTemplate.convertAndSend("/topic/room/" + roomId + "/star", msg);
+    }
+
 
     @MessageMapping("/room/{roomId}/timer/start")
     public void startTimer(@DestinationVariable String roomId, @Payload Map<String, Integer> body) {

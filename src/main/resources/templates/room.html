@@ -16,13 +16,18 @@
             <h5>Online <span id="memberCount" class="badge bg-secondary">0</span></h5>
             <ul id="members" class="list-group mb-3"></ul>
 
-            <div class="card p-3">
-                <h5 id="timer">Idle</h5>
-                <div class="d-flex gap-2 mt-2">
-                    <button id="startTimer" class="btn btn-success btn-sm">Start 25</button>
-                    <button id="stopTimer" class="btn btn-outline-danger btn-sm">Stop</button>
-                </div>
-            </div>
+              <div class="d-flex gap-2 mt-2">
+              <select id="timerMinutes" class="form-select form-select-sm">
+                  <option value="5">5 min</option>
+                  <option value="15">15 min</option>
+                  <option value="25" selected>25 min</option>
+                  <option value="45">45 min</option>
+                  <option value="60">60 min</option>
+              </select>
+              <button id="startTimer" class="btn btn-success btn-sm">Start</button>
+              <button id="stopTimer" class="btn btn-outline-danger btn-sm">Stop</button>
+          </div>  
+
         </div>
 
         <div class="col-md-9">
@@ -41,10 +46,37 @@ let stompClient, roomId, myName;
 function showMessage(m) {
     const chat = document.getElementById('chat');
     const div = document.createElement('div');
-    div.className = 'border-bottom mb-1 pb-1';
-    div.textContent = m.sender + ': ' + m.content;
+    div.className = 'd-flex justify-content-between border-bottom mb-1 pb-1';
+    div.id = 'msg-' + m.id;
+
+    const text = document.createElement('span');
+    text.textContent = m.sender + ': ' + m.content;
+
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-sm p-0 border-0 bg-transparent';
+    btn.style.color = m.starred ? '#f0ad4e' : '#ccc';
+    btn.textContent = m.starred ? '★' : '☆';
+    btn.onclick = () => stompClient.send(
+        '/app/room/' + roomId + '/star/' + m.id, {},
+        JSON.stringify({ starred: !m.starred })
+    );
+
+    div.appendChild(text);
+    div.appendChild(btn);
     chat.appendChild(div);
     chat.scrollTop = chat.scrollHeight;
+}
+
+function applyStar(m) {
+    const div = document.getElementById('msg-' + m.id);
+    if (!div) return;
+    const btn = div.querySelector('button');
+    btn.style.color = m.starred ? '#f0ad4e' : '#ccc';
+    btn.textContent = m.starred ? '★' : '☆';
+    btn.onclick = () => stompClient.send(
+        '/app/room/' + roomId + '/star/' + m.id, {},
+        JSON.stringify({ starred: !m.starred })
+    );
 }
 
 function renderMembers(list) {
@@ -84,6 +116,7 @@ function connect() {
         stompClient.subscribe(base + '/chat', msg => showMessage(JSON.parse(msg.body)));
         stompClient.subscribe(base + '/presence', msg => renderMembers(JSON.parse(msg.body).members));
         stompClient.subscribe(base + '/timer', msg => renderTimer(JSON.parse(msg.body)));
+        stompClient.subscribe(base + '/star', msg => applyStar(JSON.parse(msg.body)));
         stompClient.send('/app/room/' + roomId + '/join', {}, JSON.stringify({ name: myName }));
     });
 }
@@ -105,8 +138,12 @@ window.onload = () => {
     document.getElementById('messageInput').addEventListener('keydown', e => {
         if (e.key === 'Enter') sendMessage();
     });
-    document.getElementById('startTimer').onclick = () =>
-        stompClient.send('/app/room/' + roomId + '/timer/start', {}, JSON.stringify({ minutes: 25 }));
+    document.getElementById('startTimer').onclick = () => {
+    const minutes = parseInt(document.getElementById('timerMinutes').value, 10);
+    stompClient.send('/app/room/' + roomId + '/timer/start', {},
+        JSON.stringify({ minutes: minutes }));
+};
+
     document.getElementById('stopTimer').onclick = () =>
         stompClient.send('/app/room/' + roomId + '/timer/stop', {}, '{}');
 };
