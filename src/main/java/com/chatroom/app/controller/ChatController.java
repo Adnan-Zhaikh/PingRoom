@@ -75,7 +75,8 @@ public class ChatController {
     public String index() { return "redirect:/chat"; }
 
     @GetMapping("/chat")
-    public String chat() { return "chat"; }
+    public String chat() { return "redirect:/room/lobby"; }
+
 
     @GetMapping("/room/{roomId}")
     public String room(@PathVariable String roomId, Model model) {
