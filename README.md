@@ -1,6 +1,6 @@
 # PingRoom
 
-A real-time chat room built with Spring Boot, using WebSockets with STOMP messaging over SockJS. Type a message and everyone connected sees it instantly, with no page refresh.
+A real-time study room.
 
 **Live:** [pingroom-9n22.onrender.com/chat](https://pingroom-9n22.onrender.com/chat)
 
