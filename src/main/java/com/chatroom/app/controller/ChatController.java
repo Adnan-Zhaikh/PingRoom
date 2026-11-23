@@ -18,6 +18,8 @@ import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Controller
 public class ChatController {
@@ -27,6 +29,8 @@ public class ChatController {
     private final SimpMessagingTemplate broker;
     private final PresenceService presence;
     private final PomodoroService pomodoro;
+
+    private final Map<String, Map<String, ChatMessage>> roomMessages = new ConcurrentHashMap<>();
 
     public ChatController(SimpMessagingTemplate broker, PresenceService presence, PomodoroService pomodoro) {
         this.broker = broker;
@@ -44,8 +48,6 @@ public class ChatController {
         broker.convertAndSend("/topic/room/" + roomId + "/timer", pomodoro.get(roomId));
     }
 
-    private final Map<String, Map<String, ChatMessage>> roomMessages = new ConcurrentHashMap<>();
-
     @MessageMapping("/room/{roomId}/chat")
     public void chat(@DestinationVariable String roomId, ChatMessage message) {
         message.setId(UUID.randomUUID().toString());
@@ -54,13 +56,13 @@ public class ChatController {
             .computeIfAbsent(roomId, k -> new ConcurrentHashMap<>())
             .put(message.getId(), message);
 
-        messagingTemplate.convertAndSend("/topic/room/" + roomId + "/chat", message);
+        broker.convertAndSend("/topic/room/" + roomId + "/chat", message);
     }
 
     @MessageMapping("/room/{roomId}/star/{messageId}")
     public void star(@DestinationVariable String roomId,
-                    @DestinationVariable String messageId,
-                    @Payload Map<String, Boolean> payload) {
+                     @DestinationVariable String messageId,
+                     @Payload Map<String, Boolean> payload) {
         Map<String, ChatMessage> msgs = roomMessages.get(roomId);
         if (msgs == null) return;
 
@@ -68,9 +70,8 @@ public class ChatController {
         if (msg == null) return;
 
         msg.setStarred(Boolean.TRUE.equals(payload.get("starred")));
-        messagingTemplate.convertAndSend("/topic/room/" + roomId + "/star", msg);
+        broker.convertAndSend("/topic/room/" + roomId + "/star", msg);
     }
-
 
     @MessageMapping("/room/{roomId}/timer/start")
     public void startTimer(@DestinationVariable String roomId, @Payload Map<String, Integer> body) {
@@ -97,7 +98,6 @@ public class ChatController {
 
     @GetMapping("/chat")
     public String chat() { return "redirect:/room/lobby"; }
-
 
     @GetMapping("/room/{roomId}")
     public String room(@PathVariable String roomId, Model model) {
